@@ -1,0 +1,849 @@
+<html>
+<head>
+<title>dlnd_image_classification.ipynb</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.ln { color: #999999; font-weight: normal; font-style: normal; }
+.s0 { color: rgb(0,0,0); }
+</style>
+</head>
+<BODY BGCOLOR="#ffffff">
+<TABLE CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#c0c0c0" >
+<TR><TD><CENTER>
+<FONT FACE="Arial, Helvetica" COLOR="#000000">
+dlnd_image_classification.ipynb</FONT>
+</center></TD></TR></TABLE>
+<pre>
+<span class="s0">{ 
+ &quot;cells&quot;: [ 
+  { 
+   &quot;cell_type&quot;: &quot;markdown&quot;, 
+   &quot;metadata&quot;: { 
+    &quot;collapsed&quot;: true 
+   }, 
+   &quot;source&quot;: [ 
+    &quot;# Image Classification\n&quot;, 
+    &quot;In this project, you'll classify images from the [CIFAR-10 dataset](https://www.cs.toronto.edu/~kriz/cifar.html).  The dataset consists of airplanes, dogs, cats, and other objects. You'll preprocess the images, then train a convolutional neural network on all the samples. The images need to be normalized and the labels need to be one-hot encoded.  You'll get to apply what you learned and build a convolutional, max pooling, dropout, and fully connected layers.  At the end, you'll get to see your neural network's predictions on the sample images.\n&quot;, 
+    &quot;## Get the Data\n&quot;, 
+    &quot;Run the following cell to download the [CIFAR-10 dataset for python](https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz).&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;code&quot;, 
+   &quot;execution_count&quot;: null, 
+   &quot;metadata&quot;: { 
+    &quot;collapsed&quot;: false 
+   }, 
+   &quot;outputs&quot;: [], 
+   &quot;source&quot;: [ 
+    &quot;\&quot;\&quot;\&quot;\n&quot;, 
+    &quot;DON'T MODIFY ANYTHING IN THIS CELL THAT IS BELOW THIS LINE\n&quot;, 
+    &quot;\&quot;\&quot;\&quot;\n&quot;, 
+    &quot;from urllib.request import urlretrieve\n&quot;, 
+    &quot;from os.path import isfile, isdir\n&quot;, 
+    &quot;from tqdm import tqdm\n&quot;, 
+    &quot;import problem_unittests as tests\n&quot;, 
+    &quot;import tarfile\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;cifar10_dataset_folder_path = 'cifar-10-batches-py'\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;class DLProgress(tqdm):\n&quot;, 
+    &quot;    last_block = 0\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;    def hook(self, block_num=1, block_size=1, total_size=None):\n&quot;, 
+    &quot;        self.total = total_size\n&quot;, 
+    &quot;        self.update((block_num - self.last_block) * block_size)\n&quot;, 
+    &quot;        self.last_block = block_num\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;if not isfile('cifar-10-python.tar.gz'):\n&quot;, 
+    &quot;    with DLProgress(unit='B', unit_scale=True, miniters=1, desc='CIFAR-10 Dataset') as pbar:\n&quot;, 
+    &quot;        urlretrieve(\n&quot;, 
+    &quot;            'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz',\n&quot;, 
+    &quot;            'cifar-10-python.tar.gz',\n&quot;, 
+    &quot;            pbar.hook)\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;if not isdir(cifar10_dataset_folder_path):\n&quot;, 
+    &quot;    with tarfile.open('cifar-10-python.tar.gz') as tar:\n&quot;, 
+    &quot;        tar.extractall()\n&quot;, 
+    &quot;        tar.close()\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;tests.test_folder_path(cifar10_dataset_folder_path)&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;markdown&quot;, 
+   &quot;metadata&quot;: {}, 
+   &quot;source&quot;: [ 
+    &quot;## Explore the Data\n&quot;, 
+    &quot;The dataset is broken into batches to prevent your machine from running out of memory.  The CIFAR-10 dataset consists of 5 batches, named `data_batch_1`, `data_batch_2`, etc.. Each batch contains the labels and images that are one of the following:\n&quot;, 
+    &quot;* airplane\n&quot;, 
+    &quot;* automobile\n&quot;, 
+    &quot;* bird\n&quot;, 
+    &quot;* cat\n&quot;, 
+    &quot;* deer\n&quot;, 
+    &quot;* dog\n&quot;, 
+    &quot;* frog\n&quot;, 
+    &quot;* horse\n&quot;, 
+    &quot;* ship\n&quot;, 
+    &quot;* truck\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;Understanding a dataset is part of making predictions on the data.  Play around with the code cell below by changing the `batch_id` and `sample_id`. The `batch_id` is the id for a batch (1-5). The `sample_id` is the id for a image and label pair in the batch.\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;Ask yourself \&quot;What are all possible labels?\&quot;, \&quot;What is the range of values for the image data?\&quot;, \&quot;Are the labels in order or random?\&quot;.  Answers to questions like these will help you preprocess the data and end up with better predictions.&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;code&quot;, 
+   &quot;execution_count&quot;: null, 
+   &quot;metadata&quot;: { 
+    &quot;collapsed&quot;: false 
+   }, 
+   &quot;outputs&quot;: [], 
+   &quot;source&quot;: [ 
+    &quot;%matplotlib inline\n&quot;, 
+    &quot;%config InlineBackend.figure_format = 'retina'\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;import helper\n&quot;, 
+    &quot;import numpy as np\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;# Explore the dataset\n&quot;, 
+    &quot;batch_id = 1\n&quot;, 
+    &quot;sample_id = 5\n&quot;, 
+    &quot;helper.display_stats(cifar10_dataset_folder_path, batch_id, sample_id)&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;markdown&quot;, 
+   &quot;metadata&quot;: {}, 
+   &quot;source&quot;: [ 
+    &quot;## Implement Preprocess Functions\n&quot;, 
+    &quot;### Normalize\n&quot;, 
+    &quot;In the cell below, implement the `normalize` function to take in image data, `x`, and return it as a normalized Numpy array. The values should be in the range of 0 to 1, inclusive.  The return object should be the same shape as `x`.&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;code&quot;, 
+   &quot;execution_count&quot;: null, 
+   &quot;metadata&quot;: { 
+    &quot;collapsed&quot;: false 
+   }, 
+   &quot;outputs&quot;: [], 
+   &quot;source&quot;: [ 
+    &quot;def normalize(x):\n&quot;, 
+    &quot;    \&quot;\&quot;\&quot;\n&quot;, 
+    &quot;    Normalize a list of sample image data in the range of 0 to 1\n&quot;, 
+    &quot;    : x: List of image data.  The image shape is (32, 32, 3)\n&quot;, 
+    &quot;    : return: Numpy array of normalize data\n&quot;, 
+    &quot;    \&quot;\&quot;\&quot;\n&quot;, 
+    &quot;    # TODO: Implement Function\n&quot;, 
+    &quot;    return None\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;\&quot;\&quot;\&quot;\n&quot;, 
+    &quot;DON'T MODIFY ANYTHING IN THIS CELL THAT IS BELOW THIS LINE\n&quot;, 
+    &quot;\&quot;\&quot;\&quot;\n&quot;, 
+    &quot;tests.test_normalize(normalize)&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;markdown&quot;, 
+   &quot;metadata&quot;: {}, 
+   &quot;source&quot;: [ 
+    &quot;### One-hot encode\n&quot;, 
+    &quot;Just like the previous code cell, you'll be implementing a function for preprocessing.  This time, you'll implement the `one_hot_encode` function. The input, `x`, are a list of labels.  Implement the function to return the list of labels as One-Hot encoded Numpy array.  The possible values for labels are 0 to 9. The one-hot encoding function should return the same encoding for each value between each call to `one_hot_encode`.  Make sure to save the map of encodings outside the function.\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;Hint: Don't reinvent the wheel.&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;code&quot;, 
+   &quot;execution_count&quot;: null, 
+   &quot;metadata&quot;: { 
+    &quot;collapsed&quot;: false 
+   }, 
+   &quot;outputs&quot;: [], 
+   &quot;source&quot;: [ 
+    &quot;def one_hot_encode(x):\n&quot;, 
+    &quot;    \&quot;\&quot;\&quot;\n&quot;, 
+    &quot;    One hot encode a list of sample labels. Return a one-hot encoded vector for each label.\n&quot;, 
+    &quot;    : x: List of sample Labels\n&quot;, 
+    &quot;    : return: Numpy array of one-hot encoded labels\n&quot;, 
+    &quot;    \&quot;\&quot;\&quot;\n&quot;, 
+    &quot;    # TODO: Implement Function\n&quot;, 
+    &quot;    return None\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;\&quot;\&quot;\&quot;\n&quot;, 
+    &quot;DON'T MODIFY ANYTHING IN THIS CELL THAT IS BELOW THIS LINE\n&quot;, 
+    &quot;\&quot;\&quot;\&quot;\n&quot;, 
+    &quot;tests.test_one_hot_encode(one_hot_encode)&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;markdown&quot;, 
+   &quot;metadata&quot;: {}, 
+   &quot;source&quot;: [ 
+    &quot;### Randomize Data\n&quot;, 
+    &quot;As you saw from exploring the data above, the order of the samples are randomized.  It doesn't hurt to randomize it again, but you don't need to for this dataset.&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;markdown&quot;, 
+   &quot;metadata&quot;: {}, 
+   &quot;source&quot;: [ 
+    &quot;## Preprocess all the data and save it\n&quot;, 
+    &quot;Running the code cell below will preprocess all the CIFAR-10 data and save it to file. The code below also uses 10% of the training data for validation.&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;code&quot;, 
+   &quot;execution_count&quot;: null, 
+   &quot;metadata&quot;: { 
+    &quot;collapsed&quot;: false 
+   }, 
+   &quot;outputs&quot;: [], 
+   &quot;source&quot;: [ 
+    &quot;\&quot;\&quot;\&quot;\n&quot;, 
+    &quot;DON'T MODIFY ANYTHING IN THIS CELL\n&quot;, 
+    &quot;\&quot;\&quot;\&quot;\n&quot;, 
+    &quot;# Preprocess Training, Validation, and Testing Data\n&quot;, 
+    &quot;helper.preprocess_and_save_data(cifar10_dataset_folder_path, normalize, one_hot_encode)&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;markdown&quot;, 
+   &quot;metadata&quot;: {}, 
+   &quot;source&quot;: [ 
+    &quot;# Check Point\n&quot;, 
+    &quot;This is your first checkpoint.  If you ever decide to come back to this notebook or have to restart the notebook, you can start from here.  The preprocessed data has been saved to disk.&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;code&quot;, 
+   &quot;execution_count&quot;: null, 
+   &quot;metadata&quot;: { 
+    &quot;collapsed&quot;: true 
+   }, 
+   &quot;outputs&quot;: [], 
+   &quot;source&quot;: [ 
+    &quot;\&quot;\&quot;\&quot;\n&quot;, 
+    &quot;DON'T MODIFY ANYTHING IN THIS CELL\n&quot;, 
+    &quot;\&quot;\&quot;\&quot;\n&quot;, 
+    &quot;import pickle\n&quot;, 
+    &quot;import problem_unittests as tests\n&quot;, 
+    &quot;import helper\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;# Load the Preprocessed Validation data\n&quot;, 
+    &quot;valid_features, valid_labels = pickle.load(open('preprocess_validation.p', mode='rb'))&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;markdown&quot;, 
+   &quot;metadata&quot;: {}, 
+   &quot;source&quot;: [ 
+    &quot;## Build the network\n&quot;, 
+    &quot;For the neural network, you'll build each layer into a function.  Most of the code you've seen has been outside of functions. To test your code more thoroughly, we require that you put each layer in a function.  This allows us to give you better feedback and test for simple mistakes using our unittests before you submit your project.\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;&gt;**Note:** If you're finding it hard to dedicate enough time for this course each week, we've provided a small shortcut to this part of the project. In the next couple of problems, you'll have the option to use classes from the [TensorFlow Layers](https://www.tensorflow.org/api_docs/python/tf/layers) or [TensorFlow Layers (contrib)](https://www.tensorflow.org/api_guides/python/contrib.layers) packages to build each layer, except the layers you build in the \&quot;Convolutional and Max Pooling Layer\&quot; section.  TF Layers is similar to Keras's and TFLearn's abstraction to layers, so it's easy to pickup.\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;&gt;However, if you would like to get the most out of this course, try to solve all the problems _without_ using anything from the TF Layers packages. You **can** still use classes from other packages that happen to have the same name as ones you find in TF Layers! For example, instead of using the TF Layers version of the `conv2d` class, [tf.layers.conv2d](https://www.tensorflow.org/api_docs/python/tf/layers/conv2d), you would want to use the TF Neural Network version of `conv2d`, [tf.nn.conv2d](https://www.tensorflow.org/api_docs/python/tf/nn/conv2d). \n&quot;, 
+    &quot;\n&quot;, 
+    &quot;Let's begin!\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;### Input\n&quot;, 
+    &quot;The neural network needs to read the image data, one-hot encoded labels, and dropout keep probability. Implement the following functions\n&quot;, 
+    &quot;* Implement `neural_net_image_input`\n&quot;, 
+    &quot; * Return a [TF Placeholder](https://www.tensorflow.org/api_docs/python/tf/placeholder)\n&quot;, 
+    &quot; * Set the shape using `image_shape` with batch size set to `None`.\n&quot;, 
+    &quot; * Name the TensorFlow placeholder \&quot;x\&quot; using the TensorFlow `name` parameter in the [TF Placeholder](https://www.tensorflow.org/api_docs/python/tf/placeholder).\n&quot;, 
+    &quot;* Implement `neural_net_label_input`\n&quot;, 
+    &quot; * Return a [TF Placeholder](https://www.tensorflow.org/api_docs/python/tf/placeholder)\n&quot;, 
+    &quot; * Set the shape using `n_classes` with batch size set to `None`.\n&quot;, 
+    &quot; * Name the TensorFlow placeholder \&quot;y\&quot; using the TensorFlow `name` parameter in the [TF Placeholder](https://www.tensorflow.org/api_docs/python/tf/placeholder).\n&quot;, 
+    &quot;* Implement `neural_net_keep_prob_input`\n&quot;, 
+    &quot; * Return a [TF Placeholder](https://www.tensorflow.org/api_docs/python/tf/placeholder) for dropout keep probability.\n&quot;, 
+    &quot; * Name the TensorFlow placeholder \&quot;keep_prob\&quot; using the TensorFlow `name` parameter in the [TF Placeholder](https://www.tensorflow.org/api_docs/python/tf/placeholder).\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;These names will be used at the end of the project to load your saved model.\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;Note: `None` for shapes in TensorFlow allow for a dynamic size.&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;code&quot;, 
+   &quot;execution_count&quot;: null, 
+   &quot;metadata&quot;: { 
+    &quot;collapsed&quot;: false 
+   }, 
+   &quot;outputs&quot;: [], 
+   &quot;source&quot;: [ 
+    &quot;import tensorflow as tf\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;def neural_net_image_input(image_shape):\n&quot;, 
+    &quot;    \&quot;\&quot;\&quot;\n&quot;, 
+    &quot;    Return a Tensor for a bach of image input\n&quot;, 
+    &quot;    : image_shape: Shape of the images\n&quot;, 
+    &quot;    : return: Tensor for image input.\n&quot;, 
+    &quot;    \&quot;\&quot;\&quot;\n&quot;, 
+    &quot;    # TODO: Implement Function\n&quot;, 
+    &quot;    return None\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;def neural_net_label_input(n_classes):\n&quot;, 
+    &quot;    \&quot;\&quot;\&quot;\n&quot;, 
+    &quot;    Return a Tensor for a batch of label input\n&quot;, 
+    &quot;    : n_classes: Number of classes\n&quot;, 
+    &quot;    : return: Tensor for label input.\n&quot;, 
+    &quot;    \&quot;\&quot;\&quot;\n&quot;, 
+    &quot;    # TODO: Implement Function\n&quot;, 
+    &quot;    return None\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;def neural_net_keep_prob_input():\n&quot;, 
+    &quot;    \&quot;\&quot;\&quot;\n&quot;, 
+    &quot;    Return a Tensor for keep probability\n&quot;, 
+    &quot;    : return: Tensor for keep probability.\n&quot;, 
+    &quot;    \&quot;\&quot;\&quot;\n&quot;, 
+    &quot;    # TODO: Implement Function\n&quot;, 
+    &quot;    return None\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;\&quot;\&quot;\&quot;\n&quot;, 
+    &quot;DON'T MODIFY ANYTHING IN THIS CELL THAT IS BELOW THIS LINE\n&quot;, 
+    &quot;\&quot;\&quot;\&quot;\n&quot;, 
+    &quot;tf.reset_default_graph()\n&quot;, 
+    &quot;tests.test_nn_image_inputs(neural_net_image_input)\n&quot;, 
+    &quot;tests.test_nn_label_inputs(neural_net_label_input)\n&quot;, 
+    &quot;tests.test_nn_keep_prob_inputs(neural_net_keep_prob_input)&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;markdown&quot;, 
+   &quot;metadata&quot;: {}, 
+   &quot;source&quot;: [ 
+    &quot;### Convolution and Max Pooling Layer\n&quot;, 
+    &quot;Convolution layers have a lot of success with images. For this code cell, you should implement the function `conv2d_maxpool` to apply convolution then max pooling:\n&quot;, 
+    &quot;* Create the weight and bias using `conv_ksize`, `conv_num_outputs` and the shape of `x_tensor`.\n&quot;, 
+    &quot;* Apply a convolution to `x_tensor` using weight and `conv_strides`.\n&quot;, 
+    &quot; * We recommend you use same padding, but you're welcome to use any padding.\n&quot;, 
+    &quot;* Add bias\n&quot;, 
+    &quot;* Add a nonlinear activation to the convolution.\n&quot;, 
+    &quot;* Apply Max Pooling using `pool_ksize` and `pool_strides`.\n&quot;, 
+    &quot; * We recommend you use same padding, but you're welcome to use any padding.\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;**Note:** You **can't** use [TensorFlow Layers](https://www.tensorflow.org/api_docs/python/tf/layers) or [TensorFlow Layers (contrib)](https://www.tensorflow.org/api_guides/python/contrib.layers) for **this** layer, but you can still use TensorFlow's [Neural Network](https://www.tensorflow.org/api_docs/python/tf/nn) package. You may still use the shortcut option for all the **other** layers.&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;code&quot;, 
+   &quot;execution_count&quot;: null, 
+   &quot;metadata&quot;: { 
+    &quot;collapsed&quot;: false 
+   }, 
+   &quot;outputs&quot;: [], 
+   &quot;source&quot;: [ 
+    &quot;def conv2d_maxpool(x_tensor, conv_num_outputs, conv_ksize, conv_strides, pool_ksize, pool_strides):\n&quot;, 
+    &quot;    \&quot;\&quot;\&quot;\n&quot;, 
+    &quot;    Apply convolution then max pooling to x_tensor\n&quot;, 
+    &quot;    :param x_tensor: TensorFlow Tensor\n&quot;, 
+    &quot;    :param conv_num_outputs: Number of outputs for the convolutional layer\n&quot;, 
+    &quot;    :param conv_ksize: kernal size 2-D Tuple for the convolutional layer\n&quot;, 
+    &quot;    :param conv_strides: Stride 2-D Tuple for convolution\n&quot;, 
+    &quot;    :param pool_ksize: kernal size 2-D Tuple for pool\n&quot;, 
+    &quot;    :param pool_strides: Stride 2-D Tuple for pool\n&quot;, 
+    &quot;    : return: A tensor that represents convolution and max pooling of x_tensor\n&quot;, 
+    &quot;    \&quot;\&quot;\&quot;\n&quot;, 
+    &quot;    # TODO: Implement Function\n&quot;, 
+    &quot;    return None \n&quot;, 
+    &quot;\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;\&quot;\&quot;\&quot;\n&quot;, 
+    &quot;DON'T MODIFY ANYTHING IN THIS CELL THAT IS BELOW THIS LINE\n&quot;, 
+    &quot;\&quot;\&quot;\&quot;\n&quot;, 
+    &quot;tests.test_con_pool(conv2d_maxpool)&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;markdown&quot;, 
+   &quot;metadata&quot;: {}, 
+   &quot;source&quot;: [ 
+    &quot;### Flatten Layer\n&quot;, 
+    &quot;Implement the `flatten` function to change the dimension of `x_tensor` from a 4-D tensor to a 2-D tensor.  The output should be the shape (*Batch Size*, *Flattened Image Size*). Shortcut option: you can use classes from the [TensorFlow Layers](https://www.tensorflow.org/api_docs/python/tf/layers) or [TensorFlow Layers (contrib)](https://www.tensorflow.org/api_guides/python/contrib.layers) packages for this layer. For more of a challenge, only use other TensorFlow packages.&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;code&quot;, 
+   &quot;execution_count&quot;: null, 
+   &quot;metadata&quot;: { 
+    &quot;collapsed&quot;: false 
+   }, 
+   &quot;outputs&quot;: [], 
+   &quot;source&quot;: [ 
+    &quot;def flatten(x_tensor):\n&quot;, 
+    &quot;    \&quot;\&quot;\&quot;\n&quot;, 
+    &quot;    Flatten x_tensor to (Batch Size, Flattened Image Size)\n&quot;, 
+    &quot;    : x_tensor: A tensor of size (Batch Size, ...), where ... are the image dimensions.\n&quot;, 
+    &quot;    : return: A tensor of size (Batch Size, Flattened Image Size).\n&quot;, 
+    &quot;    \&quot;\&quot;\&quot;\n&quot;, 
+    &quot;    # TODO: Implement Function\n&quot;, 
+    &quot;    return None\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;\&quot;\&quot;\&quot;\n&quot;, 
+    &quot;DON'T MODIFY ANYTHING IN THIS CELL THAT IS BELOW THIS LINE\n&quot;, 
+    &quot;\&quot;\&quot;\&quot;\n&quot;, 
+    &quot;tests.test_flatten(flatten)&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;markdown&quot;, 
+   &quot;metadata&quot;: {}, 
+   &quot;source&quot;: [ 
+    &quot;### Fully-Connected Layer\n&quot;, 
+    &quot;Implement the `fully_conn` function to apply a fully connected layer to `x_tensor` with the shape (*Batch Size*, *num_outputs*). Shortcut option: you can use classes from the [TensorFlow Layers](https://www.tensorflow.org/api_docs/python/tf/layers) or [TensorFlow Layers (contrib)](https://www.tensorflow.org/api_guides/python/contrib.layers) packages for this layer. For more of a challenge, only use other TensorFlow packages.&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;code&quot;, 
+   &quot;execution_count&quot;: null, 
+   &quot;metadata&quot;: { 
+    &quot;collapsed&quot;: false 
+   }, 
+   &quot;outputs&quot;: [], 
+   &quot;source&quot;: [ 
+    &quot;def fully_conn(x_tensor, num_outputs):\n&quot;, 
+    &quot;    \&quot;\&quot;\&quot;\n&quot;, 
+    &quot;    Apply a fully connected layer to x_tensor using weight and bias\n&quot;, 
+    &quot;    : x_tensor: A 2-D tensor where the first dimension is batch size.\n&quot;, 
+    &quot;    : num_outputs: The number of output that the new tensor should be.\n&quot;, 
+    &quot;    : return: A 2-D tensor where the second dimension is num_outputs.\n&quot;, 
+    &quot;    \&quot;\&quot;\&quot;\n&quot;, 
+    &quot;    # TODO: Implement Function\n&quot;, 
+    &quot;    return None\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;\&quot;\&quot;\&quot;\n&quot;, 
+    &quot;DON'T MODIFY ANYTHING IN THIS CELL THAT IS BELOW THIS LINE\n&quot;, 
+    &quot;\&quot;\&quot;\&quot;\n&quot;, 
+    &quot;tests.test_fully_conn(fully_conn)&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;markdown&quot;, 
+   &quot;metadata&quot;: {}, 
+   &quot;source&quot;: [ 
+    &quot;### Output Layer\n&quot;, 
+    &quot;Implement the `output` function to apply a fully connected layer to `x_tensor` with the shape (*Batch Size*, *num_outputs*). Shortcut option: you can use classes from the [TensorFlow Layers](https://www.tensorflow.org/api_docs/python/tf/layers) or [TensorFlow Layers (contrib)](https://www.tensorflow.org/api_guides/python/contrib.layers) packages for this layer. For more of a challenge, only use other TensorFlow packages.\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;**Note:** Activation, softmax, or cross entropy should **not** be applied to this.&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;code&quot;, 
+   &quot;execution_count&quot;: null, 
+   &quot;metadata&quot;: { 
+    &quot;collapsed&quot;: false 
+   }, 
+   &quot;outputs&quot;: [], 
+   &quot;source&quot;: [ 
+    &quot;def output(x_tensor, num_outputs):\n&quot;, 
+    &quot;    \&quot;\&quot;\&quot;\n&quot;, 
+    &quot;    Apply a output layer to x_tensor using weight and bias\n&quot;, 
+    &quot;    : x_tensor: A 2-D tensor where the first dimension is batch size.\n&quot;, 
+    &quot;    : num_outputs: The number of output that the new tensor should be.\n&quot;, 
+    &quot;    : return: A 2-D tensor where the second dimension is num_outputs.\n&quot;, 
+    &quot;    \&quot;\&quot;\&quot;\n&quot;, 
+    &quot;    # TODO: Implement Function\n&quot;, 
+    &quot;    return None\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;\&quot;\&quot;\&quot;\n&quot;, 
+    &quot;DON'T MODIFY ANYTHING IN THIS CELL THAT IS BELOW THIS LINE\n&quot;, 
+    &quot;\&quot;\&quot;\&quot;\n&quot;, 
+    &quot;tests.test_output(output)&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;markdown&quot;, 
+   &quot;metadata&quot;: {}, 
+   &quot;source&quot;: [ 
+    &quot;### Create Convolutional Model\n&quot;, 
+    &quot;Implement the function `conv_net` to create a convolutional neural network model. The function takes in a batch of images, `x`, and outputs logits.  Use the layers you created above to create this model:\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;* Apply 1, 2, or 3 Convolution and Max Pool layers\n&quot;, 
+    &quot;* Apply a Flatten Layer\n&quot;, 
+    &quot;* Apply 1, 2, or 3 Fully Connected Layers\n&quot;, 
+    &quot;* Apply an Output Layer\n&quot;, 
+    &quot;* Return the output\n&quot;, 
+    &quot;* Apply [TensorFlow's Dropout](https://www.tensorflow.org/api_docs/python/tf/nn/dropout) to one or more layers in the model using `keep_prob`. &quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;code&quot;, 
+   &quot;execution_count&quot;: null, 
+   &quot;metadata&quot;: { 
+    &quot;collapsed&quot;: false 
+   }, 
+   &quot;outputs&quot;: [], 
+   &quot;source&quot;: [ 
+    &quot;def conv_net(x, keep_prob):\n&quot;, 
+    &quot;    \&quot;\&quot;\&quot;\n&quot;, 
+    &quot;    Create a convolutional neural network model\n&quot;, 
+    &quot;    : x: Placeholder tensor that holds image data.\n&quot;, 
+    &quot;    : keep_prob: Placeholder tensor that hold dropout keep probability.\n&quot;, 
+    &quot;    : return: Tensor that represents logits\n&quot;, 
+    &quot;    \&quot;\&quot;\&quot;\n&quot;, 
+    &quot;    # TODO: Apply 1, 2, or 3 Convolution and Max Pool layers\n&quot;, 
+    &quot;    #    Play around with different number of outputs, kernel size and stride\n&quot;, 
+    &quot;    # Function Definition from Above:\n&quot;, 
+    &quot;    #    conv2d_maxpool(x_tensor, conv_num_outputs, conv_ksize, conv_strides, pool_ksize, pool_strides)\n&quot;, 
+    &quot;    \n&quot;, 
+    &quot;\n&quot;, 
+    &quot;    # TODO: Apply a Flatten Layer\n&quot;, 
+    &quot;    # Function Definition from Above:\n&quot;, 
+    &quot;    #   flatten(x_tensor)\n&quot;, 
+    &quot;    \n&quot;, 
+    &quot;\n&quot;, 
+    &quot;    # TODO: Apply 1, 2, or 3 Fully Connected Layers\n&quot;, 
+    &quot;    #    Play around with different number of outputs\n&quot;, 
+    &quot;    # Function Definition from Above:\n&quot;, 
+    &quot;    #   fully_conn(x_tensor, num_outputs)\n&quot;, 
+    &quot;    \n&quot;, 
+    &quot;    \n&quot;, 
+    &quot;    # TODO: Apply an Output Layer\n&quot;, 
+    &quot;    #    Set this to the number of classes\n&quot;, 
+    &quot;    # Function Definition from Above:\n&quot;, 
+    &quot;    #   output(x_tensor, num_outputs)\n&quot;, 
+    &quot;    \n&quot;, 
+    &quot;    \n&quot;, 
+    &quot;    # TODO: return output\n&quot;, 
+    &quot;    return None\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;\&quot;\&quot;\&quot;\n&quot;, 
+    &quot;DON'T MODIFY ANYTHING IN THIS CELL THAT IS BELOW THIS LINE\n&quot;, 
+    &quot;\&quot;\&quot;\&quot;\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;##############################\n&quot;, 
+    &quot;## Build the Neural Network ##\n&quot;, 
+    &quot;##############################\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;# Remove previous weights, bias, inputs, etc..\n&quot;, 
+    &quot;tf.reset_default_graph()\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;# Inputs\n&quot;, 
+    &quot;x = neural_net_image_input((32, 32, 3))\n&quot;, 
+    &quot;y = neural_net_label_input(10)\n&quot;, 
+    &quot;keep_prob = neural_net_keep_prob_input()\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;# Model\n&quot;, 
+    &quot;logits = conv_net(x, keep_prob)\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;# Name logits Tensor, so that is can be loaded from disk after training\n&quot;, 
+    &quot;logits = tf.identity(logits, name='logits')\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;# Loss and Optimizer\n&quot;, 
+    &quot;cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=y))\n&quot;, 
+    &quot;optimizer = tf.train.AdamOptimizer().minimize(cost)\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;# Accuracy\n&quot;, 
+    &quot;correct_pred = tf.equal(tf.argmax(logits, 1), tf.argmax(y, 1))\n&quot;, 
+    &quot;accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32), name='accuracy')\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;tests.test_conv_net(conv_net)&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;markdown&quot;, 
+   &quot;metadata&quot;: {}, 
+   &quot;source&quot;: [ 
+    &quot;## Train the Neural Network\n&quot;, 
+    &quot;### Single Optimization\n&quot;, 
+    &quot;Implement the function `train_neural_network` to do a single optimization.  The optimization should use `optimizer` to optimize in `session` with a `feed_dict` of the following:\n&quot;, 
+    &quot;* `x` for image input\n&quot;, 
+    &quot;* `y` for labels\n&quot;, 
+    &quot;* `keep_prob` for keep probability for dropout\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;This function will be called for each batch, so `tf.global_variables_initializer()` has already been called.\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;Note: Nothing needs to be returned. This function is only optimizing the neural network.&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;code&quot;, 
+   &quot;execution_count&quot;: null, 
+   &quot;metadata&quot;: { 
+    &quot;collapsed&quot;: false 
+   }, 
+   &quot;outputs&quot;: [], 
+   &quot;source&quot;: [ 
+    &quot;def train_neural_network(session, optimizer, keep_probability, feature_batch, label_batch):\n&quot;, 
+    &quot;    \&quot;\&quot;\&quot;\n&quot;, 
+    &quot;    Optimize the session on a batch of images and labels\n&quot;, 
+    &quot;    : session: Current TensorFlow session\n&quot;, 
+    &quot;    : optimizer: TensorFlow optimizer function\n&quot;, 
+    &quot;    : keep_probability: keep probability\n&quot;, 
+    &quot;    : feature_batch: Batch of Numpy image data\n&quot;, 
+    &quot;    : label_batch: Batch of Numpy label data\n&quot;, 
+    &quot;    \&quot;\&quot;\&quot;\n&quot;, 
+    &quot;    # TODO: Implement Function\n&quot;, 
+    &quot;    pass\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;\&quot;\&quot;\&quot;\n&quot;, 
+    &quot;DON'T MODIFY ANYTHING IN THIS CELL THAT IS BELOW THIS LINE\n&quot;, 
+    &quot;\&quot;\&quot;\&quot;\n&quot;, 
+    &quot;tests.test_train_nn(train_neural_network)&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;markdown&quot;, 
+   &quot;metadata&quot;: {}, 
+   &quot;source&quot;: [ 
+    &quot;### Show Stats\n&quot;, 
+    &quot;Implement the function `print_stats` to print loss and validation accuracy.  Use the global variables `valid_features` and `valid_labels` to calculate validation accuracy.  Use a keep probability of `1.0` to calculate the loss and validation accuracy.&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;code&quot;, 
+   &quot;execution_count&quot;: null, 
+   &quot;metadata&quot;: { 
+    &quot;collapsed&quot;: false 
+   }, 
+   &quot;outputs&quot;: [], 
+   &quot;source&quot;: [ 
+    &quot;def print_stats(session, feature_batch, label_batch, cost, accuracy):\n&quot;, 
+    &quot;    \&quot;\&quot;\&quot;\n&quot;, 
+    &quot;    Print information about loss and validation accuracy\n&quot;, 
+    &quot;    : session: Current TensorFlow session\n&quot;, 
+    &quot;    : feature_batch: Batch of Numpy image data\n&quot;, 
+    &quot;    : label_batch: Batch of Numpy label data\n&quot;, 
+    &quot;    : cost: TensorFlow cost function\n&quot;, 
+    &quot;    : accuracy: TensorFlow accuracy function\n&quot;, 
+    &quot;    \&quot;\&quot;\&quot;\n&quot;, 
+    &quot;    # TODO: Implement Function\n&quot;, 
+    &quot;    pass&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;markdown&quot;, 
+   &quot;metadata&quot;: {}, 
+   &quot;source&quot;: [ 
+    &quot;### Hyperparameters\n&quot;, 
+    &quot;Tune the following parameters:\n&quot;, 
+    &quot;* Set `epochs` to the number of iterations until the network stops learning or start overfitting\n&quot;, 
+    &quot;* Set `batch_size` to the highest number that your machine has memory for.  Most people set them to common sizes of memory:\n&quot;, 
+    &quot; * 64\n&quot;, 
+    &quot; * 128\n&quot;, 
+    &quot; * 256\n&quot;, 
+    &quot; * ...\n&quot;, 
+    &quot;* Set `keep_probability` to the probability of keeping a node using dropout&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;code&quot;, 
+   &quot;execution_count&quot;: null, 
+   &quot;metadata&quot;: { 
+    &quot;collapsed&quot;: true 
+   }, 
+   &quot;outputs&quot;: [], 
+   &quot;source&quot;: [ 
+    &quot;# TODO: Tune Parameters\n&quot;, 
+    &quot;epochs = None\n&quot;, 
+    &quot;batch_size = None\n&quot;, 
+    &quot;keep_probability = None&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;markdown&quot;, 
+   &quot;metadata&quot;: {}, 
+   &quot;source&quot;: [ 
+    &quot;### Train on a Single CIFAR-10 Batch\n&quot;, 
+    &quot;Instead of training the neural network on all the CIFAR-10 batches of data, let's use a single batch. This should save time while you iterate on the model to get a better accuracy.  Once the final validation accuracy is 50% or greater, run the model on all the data in the next section.&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;code&quot;, 
+   &quot;execution_count&quot;: null, 
+   &quot;metadata&quot;: { 
+    &quot;collapsed&quot;: false 
+   }, 
+   &quot;outputs&quot;: [], 
+   &quot;source&quot;: [ 
+    &quot;\&quot;\&quot;\&quot;\n&quot;, 
+    &quot;DON'T MODIFY ANYTHING IN THIS CELL\n&quot;, 
+    &quot;\&quot;\&quot;\&quot;\n&quot;, 
+    &quot;print('Checking the Training on a Single Batch...')\n&quot;, 
+    &quot;with tf.Session() as sess:\n&quot;, 
+    &quot;    # Initializing the variables\n&quot;, 
+    &quot;    sess.run(tf.global_variables_initializer())\n&quot;, 
+    &quot;    \n&quot;, 
+    &quot;    # Training cycle\n&quot;, 
+    &quot;    for epoch in range(epochs):\n&quot;, 
+    &quot;        batch_i = 1\n&quot;, 
+    &quot;        for batch_features, batch_labels in helper.load_preprocess_training_batch(batch_i, batch_size):\n&quot;, 
+    &quot;            train_neural_network(sess, optimizer, keep_probability, batch_features, batch_labels)\n&quot;, 
+    &quot;        print('Epoch {:&gt;2}, CIFAR-10 Batch {}:  '.format(epoch + 1, batch_i), end='')\n&quot;, 
+    &quot;        print_stats(sess, batch_features, batch_labels, cost, accuracy)&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;markdown&quot;, 
+   &quot;metadata&quot;: {}, 
+   &quot;source&quot;: [ 
+    &quot;### Fully Train the Model\n&quot;, 
+    &quot;Now that you got a good accuracy with a single CIFAR-10 batch, try it with all five batches.&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;code&quot;, 
+   &quot;execution_count&quot;: null, 
+   &quot;metadata&quot;: { 
+    &quot;collapsed&quot;: false 
+   }, 
+   &quot;outputs&quot;: [], 
+   &quot;source&quot;: [ 
+    &quot;\&quot;\&quot;\&quot;\n&quot;, 
+    &quot;DON'T MODIFY ANYTHING IN THIS CELL\n&quot;, 
+    &quot;\&quot;\&quot;\&quot;\n&quot;, 
+    &quot;save_model_path = './image_classification'\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;print('Training...')\n&quot;, 
+    &quot;with tf.Session() as sess:\n&quot;, 
+    &quot;    # Initializing the variables\n&quot;, 
+    &quot;    sess.run(tf.global_variables_initializer())\n&quot;, 
+    &quot;    \n&quot;, 
+    &quot;    # Training cycle\n&quot;, 
+    &quot;    for epoch in range(epochs):\n&quot;, 
+    &quot;        # Loop over all batches\n&quot;, 
+    &quot;        n_batches = 5\n&quot;, 
+    &quot;        for batch_i in range(1, n_batches + 1):\n&quot;, 
+    &quot;            for batch_features, batch_labels in helper.load_preprocess_training_batch(batch_i, batch_size):\n&quot;, 
+    &quot;                train_neural_network(sess, optimizer, keep_probability, batch_features, batch_labels)\n&quot;, 
+    &quot;            print('Epoch {:&gt;2}, CIFAR-10 Batch {}:  '.format(epoch + 1, batch_i), end='')\n&quot;, 
+    &quot;            print_stats(sess, batch_features, batch_labels, cost, accuracy)\n&quot;, 
+    &quot;            \n&quot;, 
+    &quot;    # Save Model\n&quot;, 
+    &quot;    saver = tf.train.Saver()\n&quot;, 
+    &quot;    save_path = saver.save(sess, save_model_path)&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;markdown&quot;, 
+   &quot;metadata&quot;: {}, 
+   &quot;source&quot;: [ 
+    &quot;# Checkpoint\n&quot;, 
+    &quot;The model has been saved to disk.\n&quot;, 
+    &quot;## Test Model\n&quot;, 
+    &quot;Test your model against the test dataset.  This will be your final accuracy. You should have an accuracy greater than 50%. If you don't, keep tweaking the model architecture and parameters.&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;code&quot;, 
+   &quot;execution_count&quot;: null, 
+   &quot;metadata&quot;: { 
+    &quot;collapsed&quot;: false 
+   }, 
+   &quot;outputs&quot;: [], 
+   &quot;source&quot;: [ 
+    &quot;\&quot;\&quot;\&quot;\n&quot;, 
+    &quot;DON'T MODIFY ANYTHING IN THIS CELL\n&quot;, 
+    &quot;\&quot;\&quot;\&quot;\n&quot;, 
+    &quot;%matplotlib inline\n&quot;, 
+    &quot;%config InlineBackend.figure_format = 'retina'\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;import tensorflow as tf\n&quot;, 
+    &quot;import pickle\n&quot;, 
+    &quot;import helper\n&quot;, 
+    &quot;import random\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;# Set batch size if not already set\n&quot;, 
+    &quot;try:\n&quot;, 
+    &quot;    if batch_size:\n&quot;, 
+    &quot;        pass\n&quot;, 
+    &quot;except NameError:\n&quot;, 
+    &quot;    batch_size = 64\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;save_model_path = './image_classification'\n&quot;, 
+    &quot;n_samples = 4\n&quot;, 
+    &quot;top_n_predictions = 3\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;def test_model():\n&quot;, 
+    &quot;    \&quot;\&quot;\&quot;\n&quot;, 
+    &quot;    Test the saved model against the test dataset\n&quot;, 
+    &quot;    \&quot;\&quot;\&quot;\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;    test_features, test_labels = pickle.load(open('preprocess_training.p', mode='rb'))\n&quot;, 
+    &quot;    loaded_graph = tf.Graph()\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;    with tf.Session(graph=loaded_graph) as sess:\n&quot;, 
+    &quot;        # Load model\n&quot;, 
+    &quot;        loader = tf.train.import_meta_graph(save_model_path + '.meta')\n&quot;, 
+    &quot;        loader.restore(sess, save_model_path)\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;        # Get Tensors from loaded model\n&quot;, 
+    &quot;        loaded_x = loaded_graph.get_tensor_by_name('x:0')\n&quot;, 
+    &quot;        loaded_y = loaded_graph.get_tensor_by_name('y:0')\n&quot;, 
+    &quot;        loaded_keep_prob = loaded_graph.get_tensor_by_name('keep_prob:0')\n&quot;, 
+    &quot;        loaded_logits = loaded_graph.get_tensor_by_name('logits:0')\n&quot;, 
+    &quot;        loaded_acc = loaded_graph.get_tensor_by_name('accuracy:0')\n&quot;, 
+    &quot;        \n&quot;, 
+    &quot;        # Get accuracy in batches for memory limitations\n&quot;, 
+    &quot;        test_batch_acc_total = 0\n&quot;, 
+    &quot;        test_batch_count = 0\n&quot;, 
+    &quot;        \n&quot;, 
+    &quot;        for train_feature_batch, train_label_batch in helper.batch_features_labels(test_features, test_labels, batch_size):\n&quot;, 
+    &quot;            test_batch_acc_total += sess.run(\n&quot;, 
+    &quot;                loaded_acc,\n&quot;, 
+    &quot;                feed_dict={loaded_x: train_feature_batch, loaded_y: train_label_batch, loaded_keep_prob: 1.0})\n&quot;, 
+    &quot;            test_batch_count += 1\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;        print('Testing Accuracy: {}\\n'.format(test_batch_acc_total/test_batch_count))\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;        # Print Random Samples\n&quot;, 
+    &quot;        random_test_features, random_test_labels = tuple(zip(*random.sample(list(zip(test_features, test_labels)), n_samples)))\n&quot;, 
+    &quot;        random_test_predictions = sess.run(\n&quot;, 
+    &quot;            tf.nn.top_k(tf.nn.softmax(loaded_logits), top_n_predictions),\n&quot;, 
+    &quot;            feed_dict={loaded_x: random_test_features, loaded_y: random_test_labels, loaded_keep_prob: 1.0})\n&quot;, 
+    &quot;        helper.display_image_predictions(random_test_features, random_test_labels, random_test_predictions)\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;\n&quot;, 
+    &quot;test_model()&quot; 
+   ] 
+  }, 
+  { 
+   &quot;cell_type&quot;: &quot;markdown&quot;, 
+   &quot;metadata&quot;: {}, 
+   &quot;source&quot;: [ 
+    &quot;## Why 50-70% Accuracy?\n&quot;, 
+    &quot;You might be wondering why you can't get an accuracy any higher. First things first, 50% isn't bad for a simple CNN.  Pure guessing would get you 10% accuracy. However, you might notice people are getting scores [well above 70%](http://rodrigob.github.io/are_we_there_yet/build/classification_datasets_results.html#43494641522d3130).  That's because we haven't taught you all there is to know about neural networks. We still need to cover a few more techniques.\n&quot;, 
+    &quot;## Submitting This Project\n&quot;, 
+    &quot;When submitting this project, make sure to run all the cells before saving the notebook.  Save the notebook file as \&quot;dlnd_image_classification.ipynb\&quot; and save it as a HTML file under \&quot;File\&quot; -&gt; \&quot;Download as\&quot;.  Include the \&quot;helper.py\&quot; and \&quot;problem_unittests.py\&quot; files in your submission.&quot; 
+   ] 
+  } 
+ ], 
+ &quot;metadata&quot;: { 
+  &quot;kernelspec&quot;: { 
+   &quot;display_name&quot;: &quot;Python 3&quot;, 
+   &quot;language&quot;: &quot;python&quot;, 
+   &quot;name&quot;: &quot;python3&quot; 
+  }, 
+  &quot;language_info&quot;: { 
+   &quot;codemirror_mode&quot;: { 
+    &quot;name&quot;: &quot;ipython&quot;, 
+    &quot;version&quot;: 3.0 
+   }, 
+   &quot;file_extension&quot;: &quot;.py&quot;, 
+   &quot;mimetype&quot;: &quot;text/x-python&quot;, 
+   &quot;name&quot;: &quot;python&quot;, 
+   &quot;nbconvert_exporter&quot;: &quot;python&quot;, 
+   &quot;pygments_lexer&quot;: &quot;ipython3&quot;, 
+   &quot;version&quot;: &quot;3.5.2&quot; 
+  } 
+ }, 
+ &quot;nbformat&quot;: 4, 
+ &quot;nbformat_minor&quot;: 0 
+}</span></pre>
+</body>
+</html>
